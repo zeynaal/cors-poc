@@ -10,7 +10,7 @@
     <script>
     // Listen for messages from HubSpot
     window.addEventListener('message', function(event) {
-        if (event.origin === 'https://app.hubspot.com') {
+        if (event.origin === 'https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth') {
             console.log('Received message:', event.data);
             
             // Send to Collaborator
@@ -30,7 +30,7 @@
     var iframe = document.getElementById('hsFrame');
     iframe.onload = function() {
         try {
-            iframe.contentWindow.postMessage('getCookies', 'https://app.hubspot.com');
+            iframe.contentWindow.postMessage('getCookies', 'https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth');
         } catch(e) {
             console.log('PostMessage error:', e);
         }
